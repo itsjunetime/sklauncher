@@ -150,16 +150,6 @@ pub enum Algorithm {
     Clangd,
 }
 
-/*impl Algorithm {
-    pub fn as_str(&self) -> &str {
-        match self {
-            Algorithm::SkimV1 => "skim_v1",
-            Algorithm::SkimV2 => "skim_v2",
-            Algorithm::Clangd => "clangd",
-        }
-    }
-}*/
-
 impl From<Algorithm> for FuzzyAlgorithm {
     fn from(value: Algorithm) -> Self {
         match value {
@@ -181,17 +171,6 @@ pub enum Tiebreak {
     /// Prefers line with matched substring closer to the end
     End,
 }
-
-/*impl Tiebreak {
-    pub fn to_string(&self) -> String {
-        match self {
-            Tiebreak::Score => "score".to_string(),
-            Tiebreak::Index => "index".to_string(),
-            Tiebreak::Begin => "begin".to_string(),
-            Tiebreak::End => "end".to_string(),
-        }
-    }
-}*/
 
 impl From<Tiebreak> for RankCriteria {
     fn from(value: Tiebreak) -> Self {

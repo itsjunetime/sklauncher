@@ -59,7 +59,7 @@ fn get_mtime(file: &PathBuf) -> f64 {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Entry {
-    path: String,
+    path: PathBuf,
     mtime: Option<f64>,
     name: String,
     pub exec: String,
@@ -70,7 +70,7 @@ pub struct Entry {
     pub count: u32,
 }
 
-type EntryMap = IndexMap<String, Entry>;
+pub type EntryMap = IndexMap<PathBuf, Entry>;
 
 fn get_accent_color() -> u8 {
     match OPTIONS.accent_color.unwrap_or(AccentColor::Magenta) {
@@ -88,7 +88,7 @@ fn get_accent_color() -> u8 {
 impl Entry {
     pub fn new() -> Self {
         Entry {
-            path: String::new(),
+            path: PathBuf::new(),
             mtime: None,
             name: String::new(),
             exec: String::new(),
@@ -174,7 +174,7 @@ impl SkimItem for Entry {
     }
 
     fn output(&self) -> Cow<'_, str> {
-        Cow::Borrowed(&self.path)
+        Cow::Borrowed(self.path.as_os_str().to_str().unwrap())
     }
 
     fn preview(&self, _context: PreviewContext) -> ItemPreview {
@@ -192,7 +192,7 @@ impl SkimItem for Entry {
                 .arg("--long")
                 .arg(&self.path)
                 .output()
-                .unwrap_or_else(|_| panic!("Failed to read man of command: {}", self.path));
+                .unwrap_or_else(|_| panic!("Failed to read man of command: {:?}", self.path));
             if output.status.success() {
                 let comment = String::from_utf8(output.stdout).unwrap();
                 write!(text, "\n{}", RE_WHATIS.replace_all(&comment, "")).unwrap();
@@ -202,7 +202,7 @@ impl SkimItem for Entry {
     }
 }
 
-pub fn entry_cmp(_k1: &String, v1: &Entry, _k2: &String, v2: &Entry) -> Ordering {
+pub fn entry_cmp(_k1: &PathBuf, v1: &Entry, _k2: &PathBuf, v2: &Entry) -> Ordering {
     v1.name.cmp(&v2.name)
 }
 
@@ -219,10 +219,8 @@ pub fn load_bin_entries(history: &EntryMap) -> EntryMap {
             if !file.is_file() {
                 continue;
             }
-            entries.insert(
-                file.to_str().unwrap().to_string(),
-                load_bin_entry(&file, history),
-            );
+            let loaded = load_bin_entry(&file, history);
+            entries.insert(file, loaded);
         }
         entries.sort_by(entry_cmp);
         result.extend(entries);
@@ -232,12 +230,11 @@ pub fn load_bin_entries(history: &EntryMap) -> EntryMap {
 
 fn load_bin_entry(file: &Path, history: &EntryMap) -> Entry {
     let mut entry = Entry::new();
-    let filestr = file.to_str().unwrap().to_string();
     let filename = file.file_name().unwrap().to_str().unwrap().to_string();
-    if let Some(e) = history.get(&filestr) {
+    if let Some(e) = history.get(file) {
         entry.count = e.count;
     }
-    entry.path = filestr;
+    entry.path = file.to_path_buf();
     entry.name.clone_from(&filename);
     entry.exec = filename;
     entry
@@ -274,7 +271,7 @@ fn load_desktop_entry_dir(dir: &Path, history: &EntryMap) -> EntryMap {
                 None => continue,
             }
             if let Some(entry) = load_desktop_entry_file(&file, history) {
-                entries.insert(file.to_str().unwrap().to_string(), entry);
+                entries.insert(file, entry);
             }
         }
     }
@@ -284,14 +281,15 @@ fn load_desktop_entry_dir(dir: &Path, history: &EntryMap) -> EntryMap {
 fn load_desktop_entry_file(file: &PathBuf, history: &EntryMap) -> Option<Entry> {
     // check file modified time and if it's not modified since prev access, return cached entry
     let mtime = get_mtime(file);
-    let filestr = file.to_str().unwrap().to_string();
-    let count = if history.contains_key(&filestr) {
-        if history.get(&filestr).unwrap().mtime.unwrap() == mtime {
-            return Some(history.get(&filestr).unwrap().clone());
-        }
-        history.get(&filestr).unwrap().count
-    } else {
-        0
+    let count = match history.get(file) {
+        Some(entry) => {
+            if entry.mtime.is_some_and(|m| m == mtime) {
+                return Some(entry.clone());
+            }
+
+            entry.count
+        },
+        None => 0
     };
 
     // desktop entry file is modified or added. load it.
@@ -301,29 +299,14 @@ fn load_desktop_entry_file(file: &PathBuf, history: &EntryMap) -> Option<Entry> 
     // create new entry from desktop entry
     let mut entry = Entry::new();
     entry.desktop = true;
-    entry.path = filestr;
+    entry.path = file.to_path_buf();
     entry.count = count;
     entry.mtime = Some(mtime);
-    match section.get("Name") {
-        Some(name) => entry.name = name.to_string(),
-        _ => return None,
-    }
-    match section.get("Exec") {
-        Some(exec) => entry.exec = exec.to_string(),
-        _ => return None,
-    }
-    match section.get("GenericName") {
-        Some(gname) => entry.generic_name = Some(gname.to_string()),
-        None => entry.generic_name = None,
-    }
-    match section.get("Comment") {
-        Some(comment) => entry.comment = Some(comment.to_string()),
-        None => entry.comment = None,
-    }
-    match section.get("Terminal") {
-        Some(terminal) => entry.terminal = terminal.parse::<LenientBool>().unwrap().into(),
-        None => entry.terminal = false,
-    }
+    entry.name = section.get("Name")?.to_string();
+    entry.exec = section.get("Exec")?.to_string();
+    entry.generic_name = section.get("GenericName").map(str::to_string);
+    entry.comment = section.get("Comment").map(str::to_string);
+    entry.terminal = section.get("Terminal").is_some_and(|t| t.parse::<LenientBool>().unwrap().into());
     Some(entry)
 }
 

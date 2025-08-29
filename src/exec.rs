@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, path::{Path, PathBuf}};
 use std::process::{Command, Stdio};
 
 use indexmap::IndexMap;
@@ -15,7 +15,7 @@ pub fn exec_pretrimmed(cmd: &str) {
     exec_raw(cmd.trim());
 }
 
-pub fn execute(pathstr: &str, entries: &mut IndexMap<String, Entry>) {
+pub fn execute(pathstr: &Path, entries: &mut IndexMap<PathBuf, Entry>) {
     let entry = entries.get_mut(pathstr).unwrap();
     entry.count += 1;
 

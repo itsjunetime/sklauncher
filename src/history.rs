@@ -2,9 +2,7 @@ use std::fs;
 use std::io::prelude::*;
 use std::path::PathBuf;
 
-use indexmap::map::IndexMap;
-
-use crate::entry::Entry;
+use crate::entry::EntryMap;
 
 fn get_hist_file() -> PathBuf {
     let base = xdg::BaseDirectories::with_prefix("sklauncher");
@@ -19,15 +17,15 @@ fn get_hist_file() -> PathBuf {
     hist_file
 }
 
-pub fn load_history() -> IndexMap<String, Entry> {
+pub fn load_history() -> EntryMap {
     let contents = fs::read_to_string(get_hist_file()).expect("Failed to open history file");
-    toml::from_str::<IndexMap<String, Entry>>(&contents).expect("History file is broken")
+    toml::from_str(&contents).expect("History file is broken")
 }
 
-pub fn save_history(history: &IndexMap<String, Entry>) {
+pub fn save_history(history: &EntryMap) {
     let hist_file_path = get_hist_file();
     let mut file = fs::File::create(hist_file_path).expect("Failed to open history file");
-    let contents = toml::to_string::<IndexMap<String, Entry>>(history)
+    let contents = toml::to_string(history)
         .expect("Failed convert history to toml format");
     file.write_all(contents.as_bytes())
         .expect("Failed to write history file");

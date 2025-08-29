@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate lazy_static;
 
+use std::path::Path;
+
 use skim::prelude::*;
 
 mod entry;
@@ -45,6 +47,7 @@ fn main() {
         exec_pretrimmed(&output.query);
     } else {
         let filestr = output.selected_items[0].output();
-        execute(&filestr, &mut entries);
+        let path = Path::new(filestr.as_ref());
+        execute(path, &mut entries);
     }
 }
