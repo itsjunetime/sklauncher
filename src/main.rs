@@ -9,7 +9,7 @@ mod history;
 mod options;
 
 use entry::load_entries;
-use exec::{execute, execute_raw};
+use exec::{execute, exec_pretrimmed};
 use options::build_options;
 
 fn main() {
@@ -22,7 +22,7 @@ fn main() {
         // sort entries by count
         v2.count.cmp(&v1.count)
     });
-    for (_k, entry) in tmp_entries.into_iter() {
+    for (_k, entry) in tmp_entries {
         drop(tx_item.send(Arc::new(entry)));
     }
     drop(tx_item);
@@ -42,9 +42,9 @@ fn main() {
 
     // selected, execute command
     if output.selected_items.is_empty() {
-        execute_raw(output.query);
+        exec_pretrimmed(&output.query);
     } else {
-        let filestr = output.selected_items[0].output().to_string();
-        execute(filestr, &mut entries);
+        let filestr = output.selected_items[0].output();
+        execute(&filestr, &mut entries);
     }
 }

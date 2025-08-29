@@ -88,10 +88,10 @@ fn get_accent_color() -> u8 {
 impl Entry {
     pub fn new() -> Self {
         Entry {
-            path: "".to_string(),
+            path: String::new(),
             mtime: None,
-            name: "".to_string(),
-            exec: "".to_string(),
+            name: String::new(),
+            exec: String::new(),
             generic_name: None,
             comment: None,
             terminal: false,
@@ -182,10 +182,10 @@ impl SkimItem for Entry {
         write!(text, "\x1b[3{}m{}\x1b[m", *ACCENT_COLOR, self.name).unwrap();
         if self.desktop {
             if let Some(gname) = &self.generic_name {
-                write!(text, " | {}", gname).unwrap();
+                write!(text, " | {gname}").unwrap();
             }
             if let Some(comment) = &self.comment {
-                write!(text, "\n{}", comment).unwrap();
+                write!(text, "\n{comment}").unwrap();
             }
         } else {
             let output = Command::new("whatis")
@@ -209,7 +209,7 @@ pub fn entry_cmp(_k1: &String, v1: &Entry, _k2: &String, v2: &Entry) -> Ordering
 pub fn load_bin_entries(history: &EntryMap) -> EntryMap {
     let mut result: EntryMap = IndexMap::new();
     let paths = get_paths();
-    for dir in paths.iter() {
+    for dir in &paths {
         let mut entries: EntryMap = IndexMap::new();
         for file in dir
             .read_dir()
@@ -238,15 +238,15 @@ fn load_bin_entry(file: &Path, history: &EntryMap) -> Entry {
         entry.count = e.count;
     }
     entry.path = filestr;
-    entry.name = filename.clone();
-    entry.exec = filename.clone();
+    entry.name.clone_from(&filename);
+    entry.exec = filename;
     entry
 }
 
 pub fn load_desktop_entries(history: &EntryMap) -> EntryMap {
     let mut result: EntryMap = IndexMap::new();
     let app_dirs = get_app_dirs();
-    for dir in app_dirs.iter() {
+    for dir in &app_dirs {
         let entries = load_desktop_entry_dir(dir, history);
         result.extend(entries);
     }
@@ -273,11 +273,8 @@ fn load_desktop_entry_dir(dir: &Path, history: &EntryMap) -> EntryMap {
                 }
                 None => continue,
             }
-            match load_desktop_entry_file(&file, history) {
-                Some(entry) => {
-                    entries.insert(file.to_str().unwrap().to_string(), entry);
-                }
-                None => continue,
+            if let Some(entry) = load_desktop_entry_file(&file, history) {
+                entries.insert(file.to_str().unwrap().to_string(), entry);
             }
         }
     }
@@ -286,24 +283,19 @@ fn load_desktop_entry_dir(dir: &Path, history: &EntryMap) -> EntryMap {
 
 fn load_desktop_entry_file(file: &PathBuf, history: &EntryMap) -> Option<Entry> {
     // check file modified time and if it's not modified since prev access, return cached entry
-    let count;
     let mtime = get_mtime(file);
     let filestr = file.to_str().unwrap().to_string();
-    if history.contains_key(&filestr) {
+    let count = if history.contains_key(&filestr) {
         if history.get(&filestr).unwrap().mtime.unwrap() == mtime {
             return Some(history.get(&filestr).unwrap().clone());
-        } else {
-            count = history.get(&filestr).unwrap().count;
         }
+        history.get(&filestr).unwrap().count
     } else {
-        count = 0;
-    }
+        0
+    };
 
     // desktop entry file is modified or added. load it.
-    let conf = match ini::Ini::load_from_file(file) {
-        Ok(c) => c,
-        Err(_) => return None,
-    };
+    let conf = ini::Ini::load_from_file(file).ok()?;
     let section = conf.section(Some("Desktop Entry"))?;
 
     // create new entry from desktop entry

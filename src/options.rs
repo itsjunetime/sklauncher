@@ -12,11 +12,11 @@ pub struct Cli {
     #[arg(long, value_name = "COMMAND")]
     pub terminal_command: Option<String>,
 
-    /// Show GenericName field of desktop entries
+    /// Show `GenericName` field of desktop entries
     #[arg(long)]
     pub show_generic_name: bool,
 
-    /// Include GenericName field of desktop entries to match string
+    /// Include `GenericName` field of desktop entries to match string
     #[arg(long)]
     pub match_generic_name: bool,
 
@@ -48,7 +48,7 @@ pub struct Cli {
     #[arg(long)]
     pub regex: bool,
 
-    /// Change color theme: [BASE_SCHEME][,COLOR:ANSI]
+    /// Change color theme: [`BASE_SCHEME`][,COLOR:ANSI]
     ///
     /// Color configuration. The name of the base color scheme is followed by custom
     /// color mappings. Ansi color code of -1 denotes terminal default foreground /
@@ -248,23 +248,23 @@ pub fn build_options() -> SkimOptions {
         }.to_string());
 
     if let Some(ref p_win) = OPTIONS.preview_window {
-        builder.preview_window(p_win.to_string());
+        builder.preview_window(p_win.clone());
     }
 
     if let Some(ref height) = OPTIONS.height {
-        builder.height(height.to_string());
+        builder.height(height.clone());
     }
 
     if let Some(ref min_height) = OPTIONS.min_height {
-        builder.min_height(min_height.to_string());
+        builder.min_height(min_height.clone());
     }
 
     if let Some(ref margin) = OPTIONS.margin {
-        builder.margin(margin.to_string());
+        builder.margin(margin.clone());
     }
 
     if let Some(ref prompt) = OPTIONS.prompt {
-        builder.prompt(prompt.to_string());
+        builder.prompt(prompt.clone());
     }
 
         builder
