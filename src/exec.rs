@@ -49,7 +49,7 @@ fn exec_term(entry: Entry) {
     let mut term_cmd: Vec<String> = Vec::new();
     match &OPTIONS.terminal_command {
         Some(val) => {
-            term_cmd.extend(shlex::split(&val).expect("Failed to parse --terminal-command option"))
+            term_cmd.extend(shlex::split(val).expect("Failed to parse --terminal-command option"))
         }
         None => match env::var_os("TERM") {
             Some(val) => term_cmd = vec![val.to_str().unwrap().to_string(), "-e".to_string()],
@@ -59,11 +59,13 @@ fn exec_term(entry: Entry) {
     term_cmd.push(cmd);
 
     // convert Vec<String> to Iter<&str> and join to a single String
-    let command = shlex::join(term_cmd.iter().map(String::as_str));
+    let command = shlex::try_join(term_cmd.iter().map(String::as_str)).unwrap();
     _exec(&command);
 }
 
 fn _exec(cmd: &str) {
+    // we don't want to wait on it, we want it to keep running while we exit
+    #[expect(clippy::zombie_processes)]
     Command::new("setsid")
         .arg("sh")
         .arg("-c")

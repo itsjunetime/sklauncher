@@ -150,12 +150,22 @@ pub enum Algorithm {
     Clangd,
 }
 
-impl Algorithm {
+/*impl Algorithm {
     pub fn as_str(&self) -> &str {
         match self {
             Algorithm::SkimV1 => "skim_v1",
             Algorithm::SkimV2 => "skim_v2",
             Algorithm::Clangd => "clangd",
+        }
+    }
+}*/
+
+impl From<Algorithm> for FuzzyAlgorithm {
+    fn from(value: Algorithm) -> Self {
+        match value {
+            Algorithm::SkimV1 => Self::SkimV1,
+            Algorithm::SkimV2 => Self::SkimV2,
+            Algorithm::Clangd => Self::Clangd
         }
     }
 }
@@ -172,13 +182,24 @@ pub enum Tiebreak {
     End,
 }
 
-impl Tiebreak {
+/*impl Tiebreak {
     pub fn to_string(&self) -> String {
         match self {
             Tiebreak::Score => "score".to_string(),
             Tiebreak::Index => "index".to_string(),
             Tiebreak::Begin => "begin".to_string(),
             Tiebreak::End => "end".to_string(),
+        }
+    }
+}*/
+
+impl From<Tiebreak> for RankCriteria {
+    fn from(value: Tiebreak) -> Self {
+        match value {
+            Tiebreak::Score => Self::Score,
+            Tiebreak::Index => Self::Index,
+            Tiebreak::Begin => Self::Begin,
+            Tiebreak::End => Self::End,
         }
     }
 }
@@ -202,21 +223,20 @@ pub enum AccentColor {
     White,
 }
 
-pub fn build_options() -> SkimOptions<'static> {
-    SkimOptionsBuilder::default()
-        .multi(false)
-        .preview(if OPTIONS.no_preview { None } else { Some("") })
-        .algorithm(FuzzyAlgorithm::of(
-            OPTIONS.algorithm.unwrap_or(Algorithm::SkimV2).as_str(),
+pub fn build_options() -> SkimOptions {
+    let mut builder = SkimOptionsBuilder::default();
+    builder.multi(false)
+        .preview(if OPTIONS.no_preview { None } else { Some(String::new()) })
+        .algorithm(FuzzyAlgorithm::from(
+            OPTIONS.algorithm.unwrap_or(Algorithm::SkimV2),
         ))
-        .tiebreak(Some(
-            OPTIONS.tiebreak.unwrap_or(Tiebreak::Score).to_string(),
-        ))
-        .nosort(OPTIONS.no_sort)
+        .tiebreak(vec![RankCriteria::from(
+            OPTIONS.tiebreak.unwrap_or(Tiebreak::Score)
+        )])
+        .no_sort(OPTIONS.no_sort)
         .exact(OPTIONS.exact)
         .regex(OPTIONS.regex)
-        .color(OPTIONS.color.as_deref())
-        .preview_window(OPTIONS.preview_window.as_deref())
+        .color(OPTIONS.color.clone())
         .layout(if OPTIONS.reverse {
             "reverse"
         } else {
@@ -225,11 +245,29 @@ pub fn build_options() -> SkimOptions<'static> {
                 Layout::Reverse => "reverse",
                 Layout::ReverseList => "reverse-list",
             }
-        })
-        .height(OPTIONS.height.as_deref())
-        .min_height(OPTIONS.min_height.as_deref())
-        .margin(OPTIONS.margin.as_deref())
-        .prompt(OPTIONS.prompt.as_deref())
+        }.to_string());
+
+    if let Some(ref p_win) = OPTIONS.preview_window {
+        builder.preview_window(p_win.to_string());
+    }
+
+    if let Some(ref height) = OPTIONS.height {
+        builder.height(height.to_string());
+    }
+
+    if let Some(ref min_height) = OPTIONS.min_height {
+        builder.min_height(min_height.to_string());
+    }
+
+    if let Some(ref margin) = OPTIONS.margin {
+        builder.margin(margin.to_string());
+    }
+
+    if let Some(ref prompt) = OPTIONS.prompt {
+        builder.prompt(prompt.to_string());
+    }
+
+        builder
         .inline_info(OPTIONS.inline_info)
         .build()
         .expect("Failed to build skim options")

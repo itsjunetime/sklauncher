@@ -7,8 +7,8 @@ use indexmap::map::IndexMap;
 use crate::entry::Entry;
 
 fn get_hist_file() -> PathBuf {
-    let base = xdg::BaseDirectories::with_prefix("sklauncher").unwrap();
-    let cache_dir = base.get_cache_home();
+    let base = xdg::BaseDirectories::with_prefix("sklauncher");
+    let cache_dir = base.get_cache_home().unwrap();
     if !cache_dir.is_dir() {
         fs::create_dir_all(cache_dir.as_path()).unwrap();
     }
@@ -29,6 +29,6 @@ pub fn save_history(history: &IndexMap<String, Entry>) {
     let mut file = fs::File::create(hist_file_path).expect("Failed to open history file");
     let contents = toml::to_string::<IndexMap<String, Entry>>(history)
         .expect("Failed convert history to toml format");
-    file.write(contents.as_bytes())
+    file.write_all(contents.as_bytes())
         .expect("Failed to write history file");
 }
