@@ -299,7 +299,7 @@ fn load_desktop_entry_file(file: &PathBuf, history: &EntryMap) -> Option<Entry> 
     // create new entry from desktop entry
     let mut entry = Entry::new();
     entry.desktop = true;
-    entry.path = file.to_path_buf();
+    entry.path = file.clone();
     entry.count = count;
     entry.mtime = Some(mtime);
     entry.name = section.get("Name")?.to_string();
